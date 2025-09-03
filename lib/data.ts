@@ -1,6 +1,35 @@
 import { Project } from "@/components/project-card";
 import axios from "axios";
 
+// Funções auxiliares para gerenciar cookies
+const setCookie = (name: string, value: string, hours: number = 24) => {
+  if (typeof document === 'undefined') return;
+  
+  const date = new Date();
+  date.setTime(date.getTime() + (hours * 60 * 60 * 1000));
+  const expires = `expires=${date.toUTCString()}`;
+  document.cookie = `${name}=${value};${expires};path=/`;
+};
+
+const getCookie = (name: string): string | null => {
+  if (typeof document === 'undefined') return null;
+  
+  const nameEQ = `${name}=`;
+  const ca = document.cookie.split(';');
+  
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+  }
+  return null;
+};
+
+const deleteCookie = (name: string) => {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+};
+
 const getRepos = async () => {
   const response = await axios.get(
     "https://api.github.com/users/Luan-Fernandes/repos"
@@ -29,15 +58,15 @@ export const getGitHubSkills = async (): Promise<Skill[]> => {
       return [];
     }
 
-    const cache = localStorage.getItem("github_skills_cache");
-    const cacheTimestamp = localStorage.getItem("github_skills_cache_time");
-
-    if (cache && cacheTimestamp) {
-      const now = Date.now();
-      const oneDay = 24 * 60 * 60 * 1000; 
-
-      if (now - parseInt(cacheTimestamp, 10) < oneDay) {
-        return JSON.parse(cache);
+    // Verificar cache nos cookies
+    const cache = getCookie("github_skills_cache");
+    
+    if (cache) {
+      try {
+        return JSON.parse(decodeURIComponent(cache));
+      } catch (error) {
+        // Se houver erro ao fazer parse, deletar o cookie inválido
+        deleteCookie("github_skills_cache");
       }
     }
 
@@ -77,15 +106,20 @@ export const getGitHubSkills = async (): Promise<Skill[]> => {
       }))
       .sort((a, b) => b.level - a.level); // Ordenar por nível decrescente
 
-    // Salvar no localStorage (apenas no lado do cliente)
+    // Salvar no cookie com expiração de 24 horas
     if (typeof window !== 'undefined') {
-      localStorage.setItem("github_skills_cache", JSON.stringify(skills));
-      localStorage.setItem("github_skills_cache_time", Date.now().toString());
+      setCookie("github_skills_cache", encodeURIComponent(JSON.stringify(skills)), 24);
     }
 
     return skills;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro ao calcular skills do GitHub:", error);
+    
+    // Verificar se é erro de rate limit
+    if (error?.response?.status === 403 && error?.response?.data?.message?.includes('rate limit')) {
+      console.warn("Rate limit da API do GitHub excedido. Usando skills padrão.");
+    }
+    
     // Retornar skills padrão em caso de erro
     return [
       { name: "JavaScript", level: 90 },
@@ -105,15 +139,15 @@ export const getGitHubProjects = async (): Promise<Project[]> => {
       return [];
     }
 
-    const cache = localStorage.getItem("github_projects_cache");
-    const cacheTimestamp = localStorage.getItem("github_projects_cache_time");
-
-    if (cache && cacheTimestamp) {
-      const now = Date.now();
-      const oneDay = 24 * 60 * 60 * 1000; 
-
-      if (now - parseInt(cacheTimestamp, 10) < oneDay) {
-        return JSON.parse(cache);
+    // Verificar cache nos cookies
+    const cache = getCookie("github_projects_cache");
+    
+    if (cache) {
+      try {
+        return JSON.parse(decodeURIComponent(cache));
+      } catch (error) {
+        // Se houver erro ao fazer parse, deletar o cookie inválido
+        deleteCookie("github_projects_cache");
       }
     }
 
@@ -145,15 +179,20 @@ export const getGitHubProjects = async (): Promise<Project[]> => {
       };
     });
 
-    // Salva no localStorage (apenas no lado do cliente)
+    // Salvar no cookie com expiração de 24 horas
     if (typeof window !== 'undefined') {
-      localStorage.setItem("github_projects_cache", JSON.stringify(githubProjects));
-      localStorage.setItem("github_projects_cache_time", Date.now().toString());
+      setCookie("github_projects_cache", encodeURIComponent(JSON.stringify(githubProjects)), 24);
     }
 
     return githubProjects;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro ao buscar repositórios:", error);
+    
+    // Verificar se é erro de rate limit
+    if (error?.response?.status === 403 && error?.response?.data?.message?.includes('rate limit')) {
+      console.warn("Rate limit da API do GitHub excedido. Tente novamente mais tarde.");
+    }
+    
     return [];
   }
 };
@@ -189,7 +228,7 @@ export const experiences = [
   },
   {
     id: "2",
-    title: "Desenvolvedor Full-Stack Junior",
+    title: "Desenvolvedor Web",
     company: "Marques Consult",
     period: "Ago/2025 - Atual",
     description:

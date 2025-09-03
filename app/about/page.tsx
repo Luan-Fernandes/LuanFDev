@@ -45,8 +45,8 @@ export default function AboutPage() {
             <div className="order-1 md:order-2">
               <div className="relative mx-auto aspect-square max-w-md overflow-hidden rounded-lg md:ml-auto">
                 <Image
-                  src="https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
-                  alt="Portrait"
+                  src="/img/foto-perfil.jpeg"
+                  alt="Foto de perfil - Luan Fernandes"
                   fill
                   className="object-cover"
                   priority
